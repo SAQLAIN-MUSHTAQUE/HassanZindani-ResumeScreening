@@ -32,3 +32,25 @@ async def extract_query_info(query_system_prompt, query, llm_model = "gpt-4o-202
     message = json.loads(json_message)
 
     return message
+
+async def evaluate_cv(evaluate_prompt, job_post, resume_text, llm_model = "gpt-4o-2024-08-06"):
+
+
+   # User message
+    user_message = f"""Evaluate and extract the information from the resume text: {resume_text}"""
+
+    # Generate the completion
+    completion = await client.chat.completions.create(
+        model=llm_model,
+        messages=[
+            {"role": "system", "content": evaluate_prompt.format(job_post = job_post)},
+            {"role": "user", "content": user_message},
+        ],
+        response_format={ "type": "json_object" },
+    )
+
+    # Get the response message
+    json_message = completion.choices[0].message.content
+    message = json.loads(json_message)
+
+    return message

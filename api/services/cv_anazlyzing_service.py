@@ -1,10 +1,11 @@
 from api.models.batch import Batch
 from api.models.job_post import JobPost
-from api.services.chatbot.llms import extract_query_info
-from api.services.chatbot.prompts import query_system_prompt
+from api.services.chatbot.llms import evaluate_cv, extract_query_info
+from api.services.chatbot.prompts import query_system_prompt, evaluation_system_prompt
 from api.services.filtering_service import filtering_skill_edu_exp
 from api.services.pinecone_service import tok_k_function
 from api.services.utils import adding_cv_text, filtering_other_field, merge_dictionaries, transform_and_sort_response
+import asyncio
 from loguru import logger
 
 async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_model:str = "gpt-4o-2024-08-06"):
@@ -40,85 +41,71 @@ async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_mod
     # Filtering against remaining fiields
     # Filter list
     filter_list = list(scoring_dict.keys())
+    filtering_tasks = []
 
-    # Comparing job_title
-    if "job_title" in extracted_query_info and (extracted_query_info["job_title"] != "" and extracted_query_info["job_title"] != None):
-        query = extracted_query_info["job_title"]
-        title_matched = await filtering_other_field(job_query=query, 
-                                                    filter_list=filter_list, 
-                                                    namespace= namespace,
-                                                    top_k= top_k,
-                                                    max_score=0.3)
-        
-        logger.debug(f"title_matched {title_matched}")
-    else:
-        title_matched = {}
-
-    # Comparing job_description
-    if "job_description" in extracted_query_info and (extracted_query_info["job_description"] != "" and extracted_query_info["job_description"] != None):
-        query = extracted_query_info["job_description"]
-        description_matched = await filtering_other_field(job_query= query, 
-                                                          filter_list= filter_list,
-                                                          namespace= namespace,
-                                                          top_k= top_k,
-                                                          max_score=0.3)
-        
-        logger.debug(f"description_matched {description_matched}")
-    else:
-        description_matched = {}
-
-    # Comparing job_reponsibilities_optional
-    if "job_responsibilities_optional" in extracted_query_info and (extracted_query_info["job_responsibilities_optional"] != "" and extracted_query_info["job_responsibilities_optional"] != None):
-        query = extracted_query_info["job_responsibilities_optional"]
-        optional_responsibilities_matched = await filtering_other_field(job_query=query, 
-                                                                        filter_list=filter_list,
-                                                                        namespace= namespace,
-                                                                        top_k= top_k,
-                                                                        max_score=0.3)
-        
-        logger.debug(f"optional_responsibilities_matched {optional_responsibilities_matched}")
-    else:
-        optional_responsibilities_matched = {}
-
-    # Comparing required_degree
-    if "required_degree" in extracted_query_info and (extracted_query_info["required_degree"] != "" and extracted_query_info["required_degree"] != None):
-        query = extracted_query_info["required_degree"]
-        degree_matched = await filtering_other_field(job_query= query,
-                                                    filter_list= filter_list,
-                                                    namespace= namespace,
-                                                    top_k=top_k,
-                                                    max_score=0.3
-                                                    )
-        
-        logger.debug(f"degree_matched {degree_matched}")
-    else:
-        degree_matched = {}
-
-    # Comparing location
-    if "required_location" in extracted_query_info and (extracted_query_info["required_location"] != "" and extracted_query_info["required_location"] != None):
-        query = extracted_query_info["required_location"]
-        location_matched = await filtering_other_field(job_query= query, 
-                                                        filter_list= filter_list,
-                                                        namespace= namespace,
-                                                        top_k= top_k, 
-                                                        max_score=0.3)
-        
-        logger.debug(f"location_matched {location_matched}")
-    else:
-        location_matched = {}
+    # title_matched
+    if "job_title" in extracted_query_info and extracted_query_info["job_title"]:
+        filtering_tasks.append(filtering_other_field(job_query=extracted_query_info["job_title"],
+                                                     filter_list=filter_list,
+                                                     namespace=namespace,
+                                                     top_k=top_k,
+                                                     max_score=0.3))
     
-    # Comparing Extra info
-    if "extra_info" in extracted_query_info and (extracted_query_info["extra_info"] != "" and extracted_query_info["extra_info"] != None):
-        query = extracted_query_info["extra_info"]
-        extra_info_matched = await filtering_other_field(job_query=query, 
-                                                         filter_list= filter_list, 
-                                                         namespace=namespace,
-                                                         top_k=top_k, 
-                                                         max_score=0.3)
-        
-        logger.debug(f"extra_info_matched {extra_info_matched}")
-    else:
-        extra_info_matched = {}
+    # description_matched
+    if "job_description" in extracted_query_info and extracted_query_info["job_description"]:
+        filtering_tasks.append(filtering_other_field(job_query=extracted_query_info["job_description"],
+                                                     filter_list=filter_list,
+                                                     namespace=namespace,
+                                                     top_k=top_k,
+                                                     max_score=0.3))
+    
+    # optional_responsibilities_matched
+    if "job_responsibilities_optional" in extracted_query_info and extracted_query_info["job_responsibilities_optional"]:
+        filtering_tasks.append(filtering_other_field(job_query=extracted_query_info["job_responsibilities_optional"],
+                                                     filter_list=filter_list,
+                                                     namespace=namespace,
+                                                     top_k=top_k,
+                                                     max_score=0.3))
+    
+    # degree_matched
+    if "required_degree" in extracted_query_info and extracted_query_info["required_degree"]:
+        filtering_tasks.append(filtering_other_field(job_query=extracted_query_info["required_degree"],
+                                                     filter_list=filter_list,
+                                                     namespace=namespace,
+                                                     top_k=top_k,
+                                                     max_score=0.3))
+    
+    # location_matched
+    if "required_location" in extracted_query_info and extracted_query_info["required_location"]:
+        filtering_tasks.append(filtering_other_field(job_query=extracted_query_info["required_location"],
+                                                     filter_list=filter_list,
+                                                     namespace=namespace,
+                                                     top_k=top_k,
+                                                     max_score=0.3))
+    
+    # extra_info_matched
+    if "extra_info" in extracted_query_info and extracted_query_info["extra_info"]:
+        filtering_tasks.append(filtering_other_field(job_query=extracted_query_info["extra_info"],
+                                                     filter_list=filter_list,
+                                                     namespace=namespace,
+                                                     top_k=top_k,
+                                                     max_score=0.3))
+
+    # Execute all filtering tasks concurrently
+    filtering_results = await asyncio.gather(*filtering_tasks)
+
+    # Unpack results into respective variables
+    title_matched, description_matched, optional_responsibilities_matched, degree_matched, location_matched, extra_info_matched = (
+        filtering_results + [{}] * (6 - len(filtering_results))
+    )
+
+    # Log the results
+    logger.debug(f"title_matched: {title_matched}")
+    logger.debug(f"description_matched: {description_matched}")
+    logger.debug(f"optional_responsibilities_matched: {optional_responsibilities_matched}")
+    logger.debug(f"degree_matched: {degree_matched}")
+    logger.debug(f"location_matched: {location_matched}")
+    logger.debug(f"extra_info_matched: {extra_info_matched}")
 
     # Merge title_matched and description_matched into scoring_dict
     merged_scoring_dict = merge_dictionaries(scoring_dict,
@@ -134,4 +121,47 @@ async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_mod
     merged_scoring_dict = adding_cv_text(merged_scoring_dict, batch)
     merged_scoring_dict
 
-    return merged_scoring_dict
+    # Evaluation by LLM
+    final_result = await llm_evaluation(merged_scoring_dict= merged_scoring_dict, 
+                                  job_post_db= job_post, 
+                                  job_post= query, 
+                                  evaluate_prompt= evaluation_system_prompt, 
+                                  llm_model=llm_model)
+
+
+    return final_result
+
+
+# Helping Function:
+async def llm_evaluation(merged_scoring_dict, job_post_db, job_post, evaluate_prompt, llm_model="gpt-4o-2024-08-06"):
+    final_dictionary = {}
+
+    # Creating a list of tasks to run concurrently
+    tasks = [
+        evaluate_cv(evaluate_prompt, job_post, value['cv_text'], llm_model= llm_model)
+        for file_name, value in merged_scoring_dict.items()
+    ]
+
+    # Await all tasks concurrently
+    responses = await asyncio.gather(*tasks)
+    logger.debug(f"Response LLM Evaluation: {responses}")
+
+    # Populating the final dictionary with responses
+    for (file_name, value), response in zip(merged_scoring_dict.items(), responses):
+        response['score'] += value['score']  # Adding the previous score
+        response['score'] = round((response['score']/10)*100, 2)
+        final_dictionary[file_name] = response
+        final_dictionary[file_name]['cv_text'] = value['cv_text']
+        final_dictionary[file_name]['cv_url'] = value['cv_url']
+        final_dictionary[file_name]['semantic_search_text'] = value['text']
+
+    # Sorting the dictionary by score in descending order
+    sorted_final_dictionary = dict(
+        sorted(final_dictionary.items(), key=lambda item: item[1]['score'], reverse=True)
+    )
+
+    # Saving in database
+    job_post_db.selected_cvs= sorted_final_dictionary
+    job_post_db.save()
+
+    return sorted_final_dictionary

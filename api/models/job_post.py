@@ -7,5 +7,4 @@ class JobPost(Document):
     batchId = ReferenceField(Batch,required = True, reverse_delete_rule=CASCADE)
     job_post = StringField(required=True)
     job_post_data= DictField(default={})
-    selected_cvs = ListField(DictField(default={}))
-    
+    selected_cvs = DictField(DictField(), default={})
