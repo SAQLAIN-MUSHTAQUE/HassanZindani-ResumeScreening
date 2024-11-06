@@ -27,4 +27,7 @@ async def main_process(files: List[Tuple[bytes, str]], batch: Batch, vision_mode
         total_tokens += result['total_tokens']
         total_cost += result['total_cost']
 
+        # Update database with processed data
+        
+
     return loaded_docs, all_raw_text, total_tokens, total_cost
