@@ -39,17 +39,20 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
         batch = Batch(userId=ObjectId(user_id))
     uploaded_files = batch.cv_list
 
-    # Upload files to S3 and collect metadata
+    # Upload files to S3 and replace filename with object_key in file_data
     uploaded_files_metadata = []
-    for content, filename in file_data:
+    for i, (content, filename) in enumerate(file_data):
         s3_url, object_key = await upload_file_to_s3(content, filename)
         
+        # Replace filename in file_data with object_key
+        file_data[i] = (content, object_key)
+        
         # Append metadata for response
-        uploaded_files_metadata.append({"filename": filename, "s3_url": s3_url})
+        uploaded_files_metadata.append({"object_key": object_key, "s3_url": s3_url})
         
         # Update database with S3 object key and URL
-        uploaded_files.append({object_key:s3_url})
-
+        uploaded_files.append({object_key: s3_url})
+        
     # Save the batch with updated file list in the database
     batch.save()
 
@@ -57,7 +60,7 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
     # Assuming the processing uses the S3 URL as the key
     # If processing requires the actual file bytes, adjust accordingly
     # Here, we're passing the file bytes and filenames
-    # processed_docs, raw_text, total_tokens, total_cost = await main_process(file_data, vision_model="gpt-4o-mini")
+    # processed_docs, raw_text, total_tokens, total_cost = await main_process(file_data, batch, vision_model="gpt-4o-mini")
 
     # response = {
     #     "loaded_docs": processed_docs,
