@@ -5,7 +5,9 @@ from api.models.user import User
 from bson import ObjectId
 import os
 from dotenv import load_dotenv
+from api.services.main_process import main_process
 from api.services.s3_service import upload_file_to_s3
+from loguru import logger
 
 load_dotenv(override=True)
 
@@ -51,8 +53,8 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
         uploaded_files_metadata.append({"object_key": object_key, "s3_url": s3_url})
         
         # Update database with S3 object key and URL
-        uploaded_files.append({object_key: s3_url})
-        
+        uploaded_files.append({object_key:{"url_link": s3_url}})
+
     # Save the batch with updated file list in the database
     batch.save()
 
@@ -60,15 +62,37 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
     # Assuming the processing uses the S3 URL as the key
     # If processing requires the actual file bytes, adjust accordingly
     # Here, we're passing the file bytes and filenames
-    # processed_docs, raw_text, total_tokens, total_cost = await main_process(file_data, batch, vision_model="gpt-4o-mini")
+    processed_docs, raw_text, total_tokens, total_cost = await main_process(file_data, batch, vision_model="gpt-4o-mini")
+    batch.splitted_docs = processed_docs
 
-    # response = {
-    #     "loaded_docs": processed_docs,
-    #     "all_raw_text": raw_text,
-    #     "total_tokens": total_tokens,
-    #     "total_cost": total_cost
-    # }
+    cv_list = batch.cv_list
+    for cv in cv_list:
+        cv_name = list(cv.keys())[0]
+        if cv_name in raw_text:
+            # Assign the raw_text content to the cv
+            cv[cv_name]["cv_text"] = raw_text[cv_name]
+            logger.debug(f"Updated {cv_name} with cv_text.")
+        else:
+            logger.warning(f"No raw text found for CV: {cv_name}")
 
-    # return response
-        # Return metadata only, not the file content
-    return {"uploaded_files": uploaded_files_metadata}
+    # Log the updated list to ensure changes were applied
+    # logger.debug(f"batch.cv_list after update: {cv_list}")
+
+    # Ensure the batch is saved after updates
+    batch.cv_list = cv_list
+    # Update the cv_list field in the batch document
+    Batch.objects(id=batch.id).update(set__cv_list=cv_list)
+
+    # Reload batch to ensure changes are reflected
+    batch.reload()
+
+    response = {
+        "processed_docs": processed_docs,
+        "all_raw_text": raw_text,
+        "total_tokens": total_tokens,
+        "total_cost": total_cost
+    }
+
+    return response
+    #     # Return metadata only, not the file content
+    # return {"uploaded_files": uploaded_files_metadata}

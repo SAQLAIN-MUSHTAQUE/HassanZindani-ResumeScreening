@@ -5,9 +5,9 @@ import os
 import tempfile
 from typing import Tuple, Dict, Any, List
 from langchain_community.document_loaders import Docx2txtLoader
-from services.pdf_service import pdf_page_to_images
-from services.openai_service import send_image_to_openai
-from services.text_service import load_texts_with_sources, split_text
+from api.services.pdf_service import pdf_page_to_images
+from api.services.openai_service import send_image_to_openai
+from api.services.text_service import load_texts_with_sources, split_text
 from PIL import Image
 from langchain.schema import Document
 
@@ -64,9 +64,9 @@ async def process_single_file(file_bytes: bytes, filename: str, vision_model: st
     splitted_docs = []
 
     if ext == ".docx":
-        # Process DOCX
         langchain_documents = load_docx(file_bytes)
-        print(f"Processed DOCX file: {filename}")
+        print(f"Loaded DOCX file: {filename}")
+        
     elif ext == ".pdf":
         # Process PDF
         images = pdf_page_to_images(file_bytes)
@@ -78,12 +78,13 @@ async def process_single_file(file_bytes: bytes, filename: str, vision_model: st
     else:
         raise ValueError("Unsupported file type")
 
-    if ext == ".docx":
-        # Raw Text
-        all_text = "\n".join([doc.page_content for doc in langchain_documents])
+    # Raw Text
+    all_text= ""
+    for doc in langchain_documents:
+      all_text += doc.page_content + "\n"
 
-        # Splitting document
-        splitted_docs = split_text(langchain_documents)
+    # Splitting document
+    splitted_docs = split_text(langchain_documents)
 
     # Key to store extracted data (could be S3 URL)
     key = filename

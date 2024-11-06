@@ -4,7 +4,8 @@
 from typing import List, Tuple, Dict, Any
 from api.models.batch import Batch 
 import asyncio
-from services.file_processor import process_single_file
+from api.services.file_processor import process_single_file
+from loguru import logger
 
 async def main_process(files: List[Tuple[bytes, str]], batch: Batch, vision_model: str) -> Tuple[Dict[str, Any], Dict[str, str], float, float]:
     """
@@ -26,8 +27,5 @@ async def main_process(files: List[Tuple[bytes, str]], batch: Batch, vision_mode
         all_raw_text[key] = raw_text
         total_tokens += result['total_tokens']
         total_cost += result['total_cost']
-
-        # Update database with processed data
-        
 
     return loaded_docs, all_raw_text, total_tokens, total_cost
