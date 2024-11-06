@@ -8,21 +8,29 @@ async def filtering_skill_edu_exp(job_data, namespace: str, top_k:int):
     # Create asynchronous tasks for fund queries
     if 'required_experience' in job_data and job_data['required_experience'] != "":
         query = job_data['required_experience']
-        task1 = [query_pinecone(query = query, namespac= namespace, top_k= top_k)]
+        task1 = [query_pinecone(query = query, namespace= namespace, top_k= top_k)]
+    else:
+        task1 = []
 
         # 'skill_matching': query_matching(diversity_focused, "funds-diversity-focus", top_k_diversity_focus),
     if 'required_education' in job_data and job_data['required_education'] != "":
         query = job_data['required_education']
 
-        task2 = [query_pinecone(query = query, namespac= namespace, top_k= top_k)]
+        task2 = [query_pinecone(query = query, namespace= namespace, top_k= top_k)]
+    else:
+        task2 = []
 
     if 'required_skills' in job_data and job_data['required_skills'] != "":
         query = job_data['required_skills']
-        task3 = [query_pinecone(query = query, namespac= namespace, top_k= top_k)]
+        task3 = [query_pinecone(query = query, namespace= namespace, top_k= top_k)]
+    else:
+        task3 = []
 
     if 'job_responsibilities_required' in job_data and job_data['job_responsibilities_required'] != "":
         query = job_data['job_responsibilities_required']
-        task4 = [query_pinecone(query = query, namespac= namespace, top_k= top_k)]
+        task4 = [query_pinecone(query = query, namespace= namespace, top_k= top_k)]
+    else:
+        task4 = []
 
     # Run task1 and task2 concurrently
     raw_results1, raw_results2, raw_results3, raw_results4 = await asyncio.gather(

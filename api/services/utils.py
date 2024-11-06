@@ -90,9 +90,22 @@ def merge_dictionaries(scoring_dict, *other_dicts):
 
 # Function to Add CV Text into merged_dict
 def adding_cv_text(merged_scoring_dict, batch_db):
+    """
+    Add the CV text and URL link into the merged_scoring_dict.
+
+    Args:
+        merged_scoring_dict (dict): The dictionary containing the scoring results.
+        batch_db (Database): The database object containing the CV data.
+
+    Returns:
+        dict: The merged_scoring_dict with the CV text and URL link added.
+    """
+    cv_data = batch_db.cv_data
+    for entry, value in cv_data.items():
+        if entry in merged_scoring_dict:
+            merged_scoring_dict[entry]['cv_text'] = value['cv_text']
+            merged_scoring_dict[entry]['cv_url'] = value['url_link']
+
+    return merged_scoring_dict
   
   
-#   for filename, data in all_raw_text.items():
-#     if filename in merged_scoring_dict:
-#       merged_scoring_dict[filename]['CV_text'] = data
-  return merged_scoring_dict

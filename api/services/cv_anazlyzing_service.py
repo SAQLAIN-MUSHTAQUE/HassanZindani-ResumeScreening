@@ -17,7 +17,8 @@ async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_mod
     extracted_query_info= await extract_query_info(query_system_prompt = query_system_prompt, 
                                                     query= query, 
                                                     llm_model = llm_model)
-    
+    logger.debug(f"extracted_query_info: {extracted_query_info}")
+
     # Saving query info in the database
     job_post.job_post_data = extracted_query_info
     job_post.save()
@@ -132,3 +133,5 @@ async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_mod
     # Adding Cv Text into merged dict
     merged_scoring_dict = adding_cv_text(merged_scoring_dict, batch)
     merged_scoring_dict
+
+    return merged_scoring_dict
