@@ -1,6 +1,6 @@
 from pinecone import Pinecone
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from langchain_openai import OpenAIEmbeddings
 import os
 from dotenv import load_dotenv
@@ -103,3 +103,63 @@ def upload_data(loaded_docs, index, embedding_model, namespace):
       [res.get() for res in async_res]
     
     return "Pinecone upload completed successfully."
+
+
+# Query Pinecone 
+async def query_pinecone(query: str, namespace: str , top_k: int, filter: dict = None, index = index) -> list:
+    """
+    Query the Pinecone index with the given parameters.
+
+    Args:
+        query: The query string to be embedded and searched.
+        namespace: The namespace to query within.
+        top_k: The number of top results to return.
+        filter: Optional dictionary for metadata filtering.
+
+    Returns:
+        list:The query responses from Pinecone.
+    """
+    # Embed the query string
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor() as pool:
+        # Embedding in thread pool
+        embedded = await loop.run_in_executor(pool, embedding_model.embed_query, query)
+
+        # Pinecone query in thread pool
+        query_params = {
+            "namespace": namespace,
+            "vector": embedded,
+            "top_k": top_k,
+            "include_metadata": True,
+        }
+        if filter:
+            query_params["filter"] = filter
+
+        try:
+            responses = await loop.run_in_executor(pool, lambda: index.query(**query_params))
+        except Exception as e:
+            print(f"Error during Pinecone query: {e}")
+            return []
+
+    # Extract essential data
+    results = []
+    for match in responses["matches"]:
+        # print (f"{query} \n {match['id']}")
+        results.append({
+            "id": match["id"],
+            "score": match["score"],
+            "metadata": match["metadata"],
+            "values":match["values"]
+        })
+    return results  # Return a list of dictionaries instead of Pinecone matches
+
+# Namespace total state function
+def tok_k_function(namespace:str, index= index):
+    # Calculating top-k using index
+    stats = index.describe_index_stats()
+    # check the namespaces and their vector counts
+    namespace_stats = stats['namespaces']
+    namespace= namespace
+    experience_top_k= namespace_stats.get(namespace,{}).get('vector_count', 0)
+
+    return experience_top_k

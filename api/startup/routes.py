@@ -1,6 +1,6 @@
-from api.routers.auth import auth_router
+from api.routers.auth_route import auth_router
 from api.routers.users import user_router
-from api.routers.batch import batch_router
+from api.routers.batch_route import batch_router
 
 
 def initialize_routes(app):
