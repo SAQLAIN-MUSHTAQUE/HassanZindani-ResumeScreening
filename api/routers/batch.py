@@ -6,6 +6,7 @@ from bson import ObjectId
 import os
 from dotenv import load_dotenv
 from api.services.main_process import main_process
+from api.services.pinecone_service import upload_to_pinecone
 from api.services.s3_service import upload_file_to_s3
 from loguru import logger
 
@@ -62,8 +63,7 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
     # Assuming the processing uses the S3 URL as the key
     # If processing requires the actual file bytes, adjust accordingly
     # Here, we're passing the file bytes and filenames
-    processed_docs, raw_text, total_tokens, total_cost = await main_process(file_data, batch, vision_model="gpt-4o-mini")
-    batch.splitted_docs = processed_docs
+    splitted_docs, raw_text, total_tokens, total_cost = await main_process(file_data, batch, vision_model="gpt-4o-mini")
 
     cv_list = batch.cv_list
     for cv in cv_list:
@@ -86,8 +86,12 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
     # Reload batch to ensure changes are reflected
     batch.reload()
 
+    # Upload to Pinecone
+    pinecone_upload= await upload_to_pinecone(batch_id= str(batch.id),
+                              splitted_docs= splitted_docs)
+
     response = {
-        "processed_docs": processed_docs,
+        "pinecone_upload": pinecone_upload,
         "all_raw_text": raw_text,
         "total_tokens": total_tokens,
         "total_cost": total_cost
