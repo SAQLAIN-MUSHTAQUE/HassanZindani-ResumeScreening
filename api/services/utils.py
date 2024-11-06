@@ -89,8 +89,10 @@ def merge_dictionaries(scoring_dict, *other_dicts):
 
 
 # Function to Add CV Text into merged_dict
-def adding_cv_text(merged_scoring_dict, all_raw_text):
-  for filename, data in all_raw_text.items():
-    if filename in merged_scoring_dict:
-      merged_scoring_dict[filename]['CV_text'] = data
+def adding_cv_text(merged_scoring_dict, batch_db):
+  
+  
+#   for filename, data in all_raw_text.items():
+#     if filename in merged_scoring_dict:
+#       merged_scoring_dict[filename]['CV_text'] = data
   return merged_scoring_dict

@@ -4,7 +4,7 @@ from api.services.chatbot.llms import extract_query_info
 from api.services.chatbot.prompts import query_system_prompt
 from api.services.filtering_service import filtering_skill_edu_exp
 from api.services.pinecone_service import tok_k_function
-from api.services.utils import filtering_other_field, merge_dictionaries, transform_and_sort_response
+from api.services.utils import adding_cv_text, filtering_other_field, merge_dictionaries, transform_and_sort_response
 from loguru import logger
 
 async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_model:str = "gpt-4o-2024-08-06"):
@@ -128,3 +128,7 @@ async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_mod
                                             location_matched,
                                             extra_info_matched
                                             )
+    
+    # Adding Cv Text into merged dict
+    merged_scoring_dict = adding_cv_text(merged_scoring_dict, batch)
+    merged_scoring_dict

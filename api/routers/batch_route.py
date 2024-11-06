@@ -37,10 +37,12 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
         raise HTTPException(status_code=404, detail=f"User with id: {user_id} not found")
     
     # Initialize a new batch for the user
-    batch = Batch.objects.filter(userId = ObjectId(user_id)).first()
-    if not batch:
-        batch = Batch(userId=ObjectId(user_id))
-    uploaded_files = batch.cv_list
+    batch = Batch(userId=ObjectId(user_id), cv_data = {})
+
+    batch.save() 
+    logger.debug(f"Batch data before save: {batch.to_mongo()}")
+
+    uploaded_files = batch.cv_data
 
     # Upload files to S3 and replace filename with object_key in file_data
     uploaded_files_metadata = []
@@ -54,10 +56,11 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
         uploaded_files_metadata.append({"object_key": object_key, "s3_url": s3_url})
         
         # Update database with S3 object key and URL
-        uploaded_files.append({object_key:{"url_link": s3_url}})
+        uploaded_files[object_key] = {"url_link": s3_url}
 
     # Save the batch with updated file list in the database
-    batch.save()
+    Batch.objects(id=batch.id).update(set__cv_data=uploaded_files)
+    batch.reload()
 
     # Process the files (e.g., extract text, perform OCR, etc.)
     # Assuming the processing uses the S3 URL as the key
@@ -65,23 +68,17 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
     # Here, we're passing the file bytes and filenames
     splitted_docs, raw_text, total_tokens, total_cost = await main_process(file_data, batch, vision_model="gpt-4o-mini")
 
-    cv_list = batch.cv_list
-    for cv in cv_list:
-        cv_name = list(cv.keys())[0]
-        if cv_name in raw_text:
+    cvs_dictionary = batch.cv_data
+    for key, value in cvs_dictionary.items():
+        if key in raw_text:
             # Assign the raw_text content to the cv
-            cv[cv_name]["cv_text"] = raw_text[cv_name]
-            logger.debug(f"Updated {cv_name} with cv_text.")
+            value["cv_text"] = raw_text[key]
+            logger.debug(f"Updated {key} with cv_text.")
         else:
-            logger.warning(f"No raw text found for CV: {cv_name}")
+            logger.warning(f"No raw text found for CV: {key}")
 
-    # Log the updated list to ensure changes were applied
-    # logger.debug(f"batch.cv_list after update: {cv_list}")
-
-    # Ensure the batch is saved after updates
-    batch.cv_list = cv_list
-    # Update the cv_list field in the batch document
-    Batch.objects(id=batch.id).update(set__cv_list=cv_list)
+    # # Update database
+    Batch.objects(id=batch.id).update(set__cv_data=cvs_dictionary)
 
     # Reload batch to ensure changes are reflected
     batch.reload()
@@ -98,5 +95,3 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
     }
 
     return response
-    #     # Return metadata only, not the file content
-    # return {"uploaded_files": uploaded_files_metadata}
