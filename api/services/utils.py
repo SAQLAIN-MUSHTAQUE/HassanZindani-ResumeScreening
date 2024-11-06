@@ -82,8 +82,8 @@ def merge_dictionaries(scoring_dict, *other_dicts):
                 scoring_dict_copy[filename]['score'] = data['score']
 
     for filename, value in scoring_dict_copy.items():
-        print(value['score'])
-        scoring_dict_copy[filename]['score'] = (value['score']) # The total best score is 1. But According to our data cleaning I am considering 0.5
+        scoring_dict_copy[filename]['score'] = (value['score'])
+        print(scoring_dict_copy[filename]['score'])
 
     return scoring_dict_copy
 

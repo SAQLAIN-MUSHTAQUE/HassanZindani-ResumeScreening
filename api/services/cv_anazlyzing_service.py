@@ -100,12 +100,12 @@ async def analyzing_process(batch: Batch, job_post: JobPost, query: str, llm_mod
     )
 
     # Log the results
-    logger.debug(f"title_matched: {title_matched}")
-    logger.debug(f"description_matched: {description_matched}")
-    logger.debug(f"optional_responsibilities_matched: {optional_responsibilities_matched}")
-    logger.debug(f"degree_matched: {degree_matched}")
-    logger.debug(f"location_matched: {location_matched}")
-    logger.debug(f"extra_info_matched: {extra_info_matched}")
+    # logger.debug(f"title_matched: {title_matched}")
+    # logger.debug(f"description_matched: {description_matched}")
+    # logger.debug(f"optional_responsibilities_matched: {optional_responsibilities_matched}")
+    # logger.debug(f"degree_matched: {degree_matched}")
+    # logger.debug(f"location_matched: {location_matched}")
+    # logger.debug(f"extra_info_matched: {extra_info_matched}")
 
     # Merge title_matched and description_matched into scoring_dict
     merged_scoring_dict = merge_dictionaries(scoring_dict,
@@ -149,7 +149,7 @@ async def llm_evaluation(merged_scoring_dict, job_post_db, job_post, evaluate_pr
     # Populating the final dictionary with responses
     for (file_name, value), response in zip(merged_scoring_dict.items(), responses):
         response['score'] += value['score']  # Adding the previous score
-        response['score'] = round((response['score']/10)*100, 2)
+        response['score'] = round((response['score']/5)*100, 2)                 # Taking Average
         final_dictionary[file_name] = response
         final_dictionary[file_name]['cv_text'] = value['cv_text']
         final_dictionary[file_name]['cv_url'] = value['cv_url']
