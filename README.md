@@ -1,4 +1,4 @@
-# HassanZindani-ResumeScreening
+#AI_Resume_Screening
 
 ## Overview
 
