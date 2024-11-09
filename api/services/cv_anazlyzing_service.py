@@ -148,8 +148,8 @@ async def llm_evaluation(merged_scoring_dict, job_post_db, job_post, evaluate_pr
 
     # Populating the final dictionary with responses
     for (file_name, value), response in zip(merged_scoring_dict.items(), responses):
-        response['score'] += value['score']  # Adding the previous score
-        response['score'] = round((response['score']/5)*100, 2)                 # Taking Average
+        response['score'] = (response['score']//2)+value['score']  # Adding the previous score
+        response['score'] = round((response['score']/5)*100, 2)                 # Max point 5
         final_dictionary[file_name] = response
         final_dictionary[file_name]['cv_text'] = value['cv_text']
         final_dictionary[file_name]['cv_url'] = value['cv_url']
