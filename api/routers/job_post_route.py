@@ -28,3 +28,5 @@ async def upload_files(payload: JobPostRequestSchema):# Make the body for Job Po
     result = await analyzing_process(batch, job_post, payload.query)
     
     return result
+
+# Getting all job for the given user and 

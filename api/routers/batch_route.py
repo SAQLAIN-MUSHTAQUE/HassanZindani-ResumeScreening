@@ -10,6 +10,8 @@ from api.services.pinecone_service import upload_to_pinecone
 from api.services.s3_service import upload_file_to_s3
 from loguru import logger
 
+from api.services.user_services import get_user_by_id
+
 load_dotenv(override=True)
 
 # AWS Bucket
@@ -95,3 +97,28 @@ async def upload_files(user_id: str, files: List[UploadFile] = File(...)):
     }
 
     return response
+
+
+# Getting all the batch for the given user
+@batch_router.get("/{user_id}")
+async def get_batches_by_user_id(user_id: str):
+    """
+    Get all batches for a given user.
+    """
+    try:
+        # Getting User Document
+        user_dict = await get_user_by_id(user_id)
+        if not user_dict:
+            raise HTTPException(status_code=404, detail=f"User with id: {user_id} not found")
+
+        # Getting all batches for the user
+        batches = Batch.objects.filter(userId=ObjectId(user_id)).all()
+
+        # Convert ObjectIds to strings
+        return [
+            {**batch.to_mongo().to_dict(), "_id": str(batch.id), "userId": str(batch.userId)}
+            for batch in batches
+        ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
